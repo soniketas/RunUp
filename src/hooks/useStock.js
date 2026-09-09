@@ -13,11 +13,12 @@ import { BAR_ID, db } from '../lib/firebase'
 
 const barRef = doc(db, 'bars', BAR_ID)
 
-// Firestore guarda `items` como mapa ({ [itemId]: {...} }), no array, para
-// poder hacer increments atómicos sobre el `current` de un item puntual
-// (updateDoc(ref, { [`items.${id}.current`]: increment(1) })) sin tocar el
-// resto del documento ni usar una transacción. Se convierte a array acá, en
-// el borde del hook, así el resto de la app sigue viendo lo mismo que antes.
+// Firestore stores `items` as a map ({ [itemId]: {...} }), not an array, so
+// that a single item's `current` can get an atomic increment
+// (updateDoc(ref, { [`items.${id}.current`]: increment(1) })) without
+// touching the rest of the document or using a transaction. It's converted
+// to an array here, at the hook boundary, so the rest of the app keeps
+// seeing the same shape as before.
 function itemsMapFromArray(items) {
   return Object.fromEntries(
     items.map(({ id, ...rest }) => [id, rest]),
@@ -40,11 +41,11 @@ export function useStock() {
   const [lastUpdated, setLastUpdated] = useState(null)
   const [shortages, setShortages] = useState([])
 
-  // Firestore es la única fuente de verdad, en tiempo real (onSnapshot), no
-  // localStorage. Cada mutación de más abajo escribe al documento y deja que
-  // este mismo listener actualice el estado local — tanto para los cambios
-  // propios como los que llegan de otro dispositivo — para no tener dos
-  // fuentes de verdad compitiendo.
+  // Firestore is the single source of truth, live (onSnapshot), not
+  // localStorage. Every mutation below writes to the document and lets this
+  // same listener update local state, both for our own changes and ones
+  // arriving from another device, so there aren't two competing sources of
+  // truth.
   useEffect(() => {
     let cancelled = false
     let unsubscribe = () => {}
@@ -86,10 +87,10 @@ export function useStock() {
     updateDoc(barRef, { runnerName: trimmed })
   }, [])
 
-  // Operaciones frecuentes sobre `current`: increment atómico de Firestore,
-  // calculado a partir del delta deseado. `setFull`/`setEmpty` no son un
-  // incremento fijo, así que el delta se calcula contra el `current` que ya
-  // tenemos en el estado local (llega del propio onSnapshot).
+  // Frequent operations on `current`: Firestore's atomic increment, computed
+  // from the desired delta. `setFull`/`setEmpty` aren't a fixed increment, so
+  // the delta is computed against the `current` we already have in local
+  // state (which comes from onSnapshot itself).
   const applyDelta = useCallback(
     (id, delta) => {
       updateDoc(barRef, {
@@ -121,7 +122,7 @@ export function useStock() {
     [items, applyDelta],
   )
 
-  // Tocar el check = "voy a traer todo lo que falta". Vuelve a tocar para desmarcar.
+  // Toggling the check on = "I'll bring everything that's missing." Toggle again to uncheck.
   const toggleChecked = useCallback(
     (itemId, missingAmount) => {
       const current = pickQty[itemId]
@@ -132,7 +133,7 @@ export function useStock() {
     [pickQty],
   )
 
-  // Ajustar manualmente cuánto se pudo conseguir (menos que lo que falta = quiebre de depósito).
+  // Manually adjust how much could actually be gathered (less than what's missing = deposit shortage).
   const setPickQuantity = useCallback((itemId, qty, missingAmount) => {
     const clamped = Math.max(0, Math.min(qty, missingAmount))
     updateDoc(barRef, {
@@ -141,14 +142,14 @@ export function useStock() {
   }, [])
 
   const finalizeChecked = useCallback(() => {
-    // Nota: se calcula todo de forma síncrona a partir de `items`/`pickQty`
-    // (closure, alimentados por el último snapshot). El resultado se escribe
-    // en un solo updateDoc con overwrite de los campos afectados —
-    // `items.<id>.current` puntuales, `pickQty` entero y `shortages`
-    // entero — sin transacción. Con un solo runner por turno (caso normal
-    // hoy) esto no genera problemas reales; si en el futuro hay varios
-    // runners tocando la app al mismo tiempo, esto debería reforzarse con
-    // una transacción real.
+    // Note: everything is computed synchronously from `items`/`pickQty`
+    // (closure, fed by the last snapshot). The result is written in a single
+    // updateDoc that overwrites just the affected fields, individual
+    // `items.<id>.current` paths, the whole `pickQty`, and the whole
+    // `shortages`, without a transaction. With one runner per shift (today's
+    // normal case) this causes no real problems; if multiple runners ever
+    // use the app at the same time, this should be hardened with a real
+    // transaction.
     const newShortages = []
     const updates = {}
 
@@ -181,12 +182,12 @@ export function useStock() {
     updateDoc(barRef, updates)
   }, [items, pickQty, shortages, runnerName])
 
-  // "Iniciar nueva reposición" no debe descartar lo que ya se marcó en la
-  // carga en curso: aplica esos pickQty igual que "Finalizar carga" (sube el
-  // stock de lo confirmado y registra quiebre en lo que haya quedado corto)
-  // y recién ahí arranca una selección de picking vacía para la próxima
-  // ronda. Lo que nunca se marcó queda con su faltante real, no se fuerza a
-  // "lleno".
+  // "Start new restock run" must not discard what's already checked in the
+  // current run: it applies that pickQty the same way "Finish run" does
+  // (raises confirmed stock and logs a shortage for anything that came up
+  // short), and only then starts an empty picking selection for the next
+  // round. Anything never checked keeps its real shortfall, it's not forced
+  // to "full".
   const reset = useCallback(() => {
     finalizeChecked()
   }, [finalizeChecked])
@@ -198,11 +199,11 @@ export function useStock() {
     [shortages],
   )
 
-  // Aplica los conteos confirmados de un escaneo por IA (foto de la zona) al
-  // stock real. `counts` es { [itemId]: cantidadConfirmada } — ya pasó por la
-  // revisión manual del runner en ScanReview, así que se aplica directo,
-  // igual que setFull/setEmpty (overwrite de los `current` afectados, sin
-  // transacción — misma nota que en finalizeChecked).
+  // Applies the confirmed counts from an AI scan (zone photo) to real stock.
+  // `counts` is { [itemId]: confirmedQuantity }, already passed through the
+  // runner's manual review in ScanReview, so it's applied directly, the same
+  // way setFull/setEmpty are (overwrite of the affected `current` fields, no
+  // transaction, same note as in finalizeChecked).
   const applyScanCounts = useCallback(
     (zoneId, counts) => {
       const updates = {}
@@ -219,8 +220,8 @@ export function useStock() {
     [items, runnerName],
   )
 
-  // --- Configuración: zonas y catálogo de productos ---
-  // `zones` cambia con tan poca frecuencia que se sobrescribe entero.
+  // --- Settings: zones and product catalog ---
+  // `zones` changes so infrequently that it's just overwritten wholesale.
 
   const addZone = useCallback(
     ({ name, subtitle, icon }) => {

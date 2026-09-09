@@ -1,9 +1,9 @@
 import { useState } from 'react'
 import { IconPencil, IconPlus, IconSettings, IconTrash } from './icons'
 
-// Nota: sin ancho aquí a propósito — Tailwind resuelve conflictos de utilidades
-// por orden de la hoja de estilos, no por orden en className, así que el ancho
-// (w-full / flex-1 / w-16) se define en cada input según su contexto.
+// Note: no width here on purpose — Tailwind resolves utility conflicts by
+// stylesheet order, not by className order, so the width (w-full / flex-1 /
+// w-16) is set on each input based on its own context.
 const inputClass =
   'rounded-xl bg-page px-3 py-2 text-sm font-semibold text-ink outline-none ring-1 ring-transparent focus:ring-accent'
 
@@ -47,8 +47,8 @@ export default function SettingsView({
   const handleRemoveZone = (zone, productCount) => {
     const confirmMsg =
       productCount > 0
-        ? `¿Eliminar "${zone.name}" y sus ${productCount} productos? Esta acción no se puede deshacer.`
-        : `¿Eliminar "${zone.name}"?`
+        ? `Delete "${zone.name}" and its ${productCount} products? This action can't be undone.`
+        : `Delete "${zone.name}"?`
     if (window.confirm(confirmMsg)) removeZone(zone.id)
   }
 
@@ -74,21 +74,21 @@ export default function SettingsView({
   }
 
   const handleRemoveProduct = (item) => {
-    if (window.confirm(`¿Eliminar "${item.name}" de esta zona?`)) removeProduct(item.id)
+    if (window.confirm(`Delete "${item.name}" from this zone?`)) removeProduct(item.id)
   }
 
   return (
     <div className="flex-1 overflow-y-auto px-5 pb-32 pt-[calc(env(safe-area-inset-top)+16px)]">
       <div className="flex items-center gap-1.5">
         <IconSettings className="h-4 w-4 text-accent" />
-        <span className="text-[13px] font-bold text-ink">Configuración</span>
+        <span className="text-[13px] font-bold text-ink">Settings</span>
       </div>
 
       <h1 className="mt-3 font-display text-[26px] font-extrabold leading-none tracking-tight text-ink">
-        Zonas y catálogo
+        Zones & catalog
       </h1>
       <p className="mt-1.5 text-xs text-muted">
-        Definí qué neveras existen y qué productos van en cada una.
+        Define which fridges exist and which products go in each one.
       </p>
 
       <div className="mt-5 space-y-3">
@@ -107,17 +107,17 @@ export default function SettingsView({
                     <div className="min-w-0">
                       <p className="truncate text-sm font-bold text-ink">{zone.name}</p>
                       <p className="truncate text-xs text-muted">
-                        {zone.subtitle || 'Sin descripción'} · {products.length}{' '}
-                        {products.length === 1 ? 'producto' : 'productos'}
+                        {zone.subtitle || 'No description'} · {products.length}{' '}
+                        {products.length === 1 ? 'product' : 'products'}
                       </p>
                     </div>
                   </div>
                   <div className="flex flex-shrink-0 items-center gap-1">
-                    <IconButton label={`Editar ${zone.name}`} onClick={() => startEditZone(zone)}>
+                    <IconButton label={`Edit ${zone.name}`} onClick={() => startEditZone(zone)}>
                       <IconPencil className="h-3.5 w-3.5" />
                     </IconButton>
                     <IconButton
-                      label={`Eliminar ${zone.name}`}
+                      label={`Delete ${zone.name}`}
                       tone="danger"
                       onClick={() => handleRemoveZone(zone, products.length)}
                     >
@@ -146,10 +146,10 @@ export default function SettingsView({
                       <span className="truncate text-[13px] font-semibold text-ink">{item.name}</span>
                       <div className="flex flex-shrink-0 items-center gap-1.5">
                         <span className="font-mono text-[11px] font-bold text-muted">Max {item.max}</span>
-                        <IconButton label={`Editar ${item.name}`} onClick={() => startEditProduct(zone.id, item)}>
+                        <IconButton label={`Edit ${item.name}`} onClick={() => startEditProduct(zone.id, item)}>
                           <IconPencil className="h-3 w-3" />
                         </IconButton>
-                        <IconButton label={`Eliminar ${item.name}`} tone="danger" onClick={() => handleRemoveProduct(item)}>
+                        <IconButton label={`Delete ${item.name}`} tone="danger" onClick={() => handleRemoveProduct(item)}>
                           <IconTrash className="h-3 w-3" />
                         </IconButton>
                       </div>
@@ -170,7 +170,7 @@ export default function SettingsView({
                     className="flex w-full items-center justify-center gap-1.5 rounded-xl py-2 font-mono text-[11px] font-bold text-accent active:bg-page"
                   >
                     <IconPlus className="h-3 w-3" />
-                    AGREGAR PRODUCTO
+                    ADD PRODUCT
                   </button>
                 )}
               </div>
@@ -190,7 +190,7 @@ export default function SettingsView({
             className="flex w-full items-center justify-center gap-1.5 rounded-2xl bg-surface py-3.5 font-mono text-xs font-bold text-accent shadow-sm ring-1 ring-black/5 active:bg-page"
           >
             <IconPlus className="h-3.5 w-3.5" />
-            AGREGAR ZONA / NEVERA
+            ADD ZONE / FRIDGE
           </button>
         )}
       </div>
@@ -226,7 +226,7 @@ function ZoneForm({ form, setForm, onSave, onCancel }) {
         <input
           value={form.name}
           onChange={(e) => setForm({ ...form, name: e.target.value })}
-          placeholder="Nombre de la zona"
+          placeholder="Zone name"
           autoFocus
           className={`${inputClass} min-w-0 flex-1`}
         />
@@ -234,7 +234,7 @@ function ZoneForm({ form, setForm, onSave, onCancel }) {
       <input
         value={form.subtitle}
         onChange={(e) => setForm({ ...form, subtitle: e.target.value })}
-        placeholder="Descripción (ej: Cervezas y energizantes)"
+        placeholder="Description (e.g. Beers and energy drinks)"
         className={`${inputClass} w-full`}
       />
       <div className="flex gap-2">
@@ -242,14 +242,14 @@ function ZoneForm({ form, setForm, onSave, onCancel }) {
           onClick={onCancel}
           className="flex-1 rounded-xl bg-page py-2 font-mono text-xs font-bold text-muted active:bg-track"
         >
-          CANCELAR
+          CANCEL
         </button>
         <button
           onClick={onSave}
           disabled={!form.name.trim()}
           className="flex-1 rounded-xl bg-accent py-2 font-mono text-xs font-bold text-white active:bg-accent/90 disabled:opacity-40"
         >
-          GUARDAR
+          SAVE
         </button>
       </div>
     </div>
@@ -263,7 +263,7 @@ function ProductForm({ form, setForm, onSave, onCancel }) {
         <input
           value={form.name}
           onChange={(e) => setForm({ ...form, name: e.target.value })}
-          placeholder="Nombre del producto"
+          placeholder="Product name"
           autoFocus
           className={`${inputClass} min-w-0 flex-1 bg-surface`}
         />
@@ -282,14 +282,14 @@ function ProductForm({ form, setForm, onSave, onCancel }) {
           onClick={onCancel}
           className="flex-1 rounded-xl bg-surface py-1.5 font-mono text-[11px] font-bold text-muted active:bg-track"
         >
-          CANCELAR
+          CANCEL
         </button>
         <button
           onClick={onSave}
           disabled={!form.name.trim() || !Number(form.max)}
           className="flex-1 rounded-xl bg-accent py-1.5 font-mono text-[11px] font-bold text-white active:bg-accent/90 disabled:opacity-40"
         >
-          GUARDAR
+          SAVE
         </button>
       </div>
     </div>

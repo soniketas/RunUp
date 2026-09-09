@@ -1,8 +1,8 @@
 import { useState } from 'react'
 
-// Pantalla de revisión post-escaneo: nunca aplica el conteo de la IA directo
-// al stock. El runner ve lo detectado, lo ajusta si hace falta (oclusión,
-// error de conteo, etc.) y recién ahí confirma.
+// Post-scan review screen: never applies the AI's count directly to stock.
+// The runner sees what was detected, adjusts it if needed (occlusion,
+// miscounts, etc.), and only then confirms.
 export default function ScanReview({ zoneName, results, onConfirm, onCancel }) {
   const [counts, setCounts] = useState(() => Object.fromEntries(results.map((r) => [r.itemId, r.detected])))
 
@@ -14,21 +14,22 @@ export default function ScanReview({ zoneName, results, onConfirm, onCancel }) {
     <div className="fixed inset-0 z-50 flex flex-col bg-page">
       <div className="flex items-center justify-between px-5 pt-5">
         <div>
-          <h2 className="font-display text-lg font-extrabold text-ink">Revisar conteo</h2>
+          <h2 className="font-display text-lg font-extrabold text-ink">Review count</h2>
           <p className="text-xs text-muted">{zoneName}</p>
         </div>
         <button onClick={onCancel} className="text-sm font-semibold text-muted active:text-ink">
-          Cancelar
+          Cancel
         </button>
       </div>
 
       <p className="px-5 py-2 text-xs text-muted">
-        Esto detectó la IA en la foto. Ajustá lo que haga falta antes de confirmar — no se guarda nada todavía.
+        This is what the AI detected in the photo. Adjust anything that needs it before confirming, nothing is
+        saved yet.
       </p>
 
       <div className="flex-1 space-y-2 overflow-y-auto px-5 pb-4">
         {results.length === 0 && (
-          <p className="pt-6 text-center text-sm text-muted">No se detectó ningún producto conocido en la foto.</p>
+          <p className="pt-6 text-center text-sm text-muted">No known product was detected in the photo.</p>
         )}
         {results.map((r) => (
           <div
@@ -39,7 +40,7 @@ export default function ScanReview({ zoneName, results, onConfirm, onCancel }) {
             <div className="flex flex-shrink-0 items-center gap-3">
               <button
                 onClick={() => adjust(r.itemId, -1)}
-                aria-label={`Restar ${r.name}`}
+                aria-label={`Decrease ${r.name}`}
                 className="flex h-9 w-9 items-center justify-center rounded-xl bg-page text-lg font-bold text-ink active:bg-track"
               >
                 −
@@ -49,7 +50,7 @@ export default function ScanReview({ zoneName, results, onConfirm, onCancel }) {
               </span>
               <button
                 onClick={() => adjust(r.itemId, 1)}
-                aria-label={`Sumar ${r.name}`}
+                aria-label={`Increase ${r.name}`}
                 className="flex h-9 w-9 items-center justify-center rounded-xl bg-accent text-lg font-bold text-white active:bg-accent/90"
               >
                 +
@@ -65,7 +66,7 @@ export default function ScanReview({ zoneName, results, onConfirm, onCancel }) {
           disabled={results.length === 0}
           className="w-full rounded-2xl bg-accent py-3.5 text-center font-display text-base font-extrabold text-white active:bg-accent/90 disabled:opacity-40"
         >
-          Confirmar y actualizar stock
+          Confirm and update stock
         </button>
       </div>
     </div>

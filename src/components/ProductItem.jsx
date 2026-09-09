@@ -20,7 +20,7 @@ export default function ProductItem({ item, onIncrement, onDecrement, onFull, on
         <button
           onClick={() => onDecrement(item.id)}
           disabled={item.current === 0}
-          aria-label={`Restar ${item.name}`}
+          aria-label={`Decrease ${item.name}`}
           className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl bg-page text-xl font-bold text-ink active:bg-track disabled:opacity-30"
         >
           −
@@ -33,7 +33,7 @@ export default function ProductItem({ item, onIncrement, onDecrement, onFull, on
         <button
           onClick={() => onIncrement(item.id)}
           disabled={item.current === item.max}
-          aria-label={`Sumar ${item.name}`}
+          aria-label={`Increase ${item.name}`}
           className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl bg-accent text-xl font-bold text-white active:bg-accent/90 disabled:opacity-30"
         >
           +
@@ -45,7 +45,7 @@ export default function ProductItem({ item, onIncrement, onDecrement, onFull, on
           className="flex-shrink-0 text-xs font-bold"
           style={{ color: isComplete ? '#10b981' : gaugeColor(pct) }}
         >
-          {isComplete ? 'Completo' : `Faltan ${missing}`}
+          {isComplete ? 'Complete' : `${missing} missing`}
         </span>
 
         <div className="h-1 min-w-6 flex-1 overflow-hidden rounded-full bg-page">
@@ -59,13 +59,13 @@ export default function ProductItem({ item, onIncrement, onDecrement, onFull, on
           onClick={() => onEmpty(item.id)}
           className="flex-shrink-0 text-xs font-semibold text-muted active:text-ink"
         >
-          Vacío
+          Empty
         </button>
         <button
           onClick={() => onFull(item.id)}
           className="flex-shrink-0 text-xs font-semibold text-muted active:text-ink"
         >
-          Lleno
+          Full
         </button>
       </div>
     </div>

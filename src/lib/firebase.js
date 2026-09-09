@@ -13,6 +13,6 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig)
 export const db = getFirestore(app)
 
-// MVP: un solo bar. Si en el futuro hace falta soportar varios, este es el
-// único id a parametrizar (por ejemplo, desde la URL o un login).
+// MVP: a single bar. If multiple ever need to be supported, this is the one
+// id to parametrize further (e.g. from a URL or a login).
 export const BAR_ID = import.meta.env.VITE_BAR_ID || 'default'

@@ -1,72 +1,72 @@
-// Vercel Serverless Function (Node runtime, auto-detectada desde /api).
-// Recibe una foto de una zona + la lista de productos esperados en ella,
-// y le pide a un modelo de visión que cuente cuántas unidades de cada
-// producto son visibles. La API key vive solo acá (variable de entorno de
-// Vercel), nunca llega al cliente.
+// Vercel Serverless Function (Node runtime, auto-detected from /api).
+// Takes a photo of a zone + the list of products expected in it, and asks a
+// vision model to count how many units of each product are visible. The API
+// key lives only here (a Vercel environment variable), it never reaches the
+// client.
 //
-// Configuración requerida en el proyecto de Vercel:
-//   ANTHROPIC_API_KEY   -> tu API key de console.anthropic.com
-//   ANTHROPIC_MODEL      -> opcional, default abajo. Confirmá el id de modelo
-//                            con soporte de visión vigente en
+// Required configuration in the Vercel project:
+//   ANTHROPIC_API_KEY   -> your API key from console.anthropic.com
+//   ANTHROPIC_MODEL      -> optional, defaults below. Confirm the current
+//                            vision-capable model id at
 //                            https://docs.claude.com/en/docs/about-claude/models
-//                            antes de depender de esto en producción.
+//                            before relying on this in production.
 
 const DEFAULT_MODEL = 'claude-sonnet-4-5'
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     res.setHeader('Allow', 'POST')
-    return res.status(405).json({ error: 'Método no permitido' })
+    return res.status(405).json({ error: 'Method not allowed' })
   }
 
   const { image, mediaType, zoneName, products } = req.body || {}
 
   if (!image || !Array.isArray(products) || products.length === 0) {
-    return res.status(400).json({ error: 'Faltan datos: se requieren image y products' })
+    return res.status(400).json({ error: 'Missing data: image and products are required' })
   }
 
   const apiKey = process.env.ANTHROPIC_API_KEY
   if (!apiKey) {
-    return res.status(500).json({ error: 'ANTHROPIC_API_KEY no está configurada en Vercel' })
+    return res.status(500).json({ error: 'ANTHROPIC_API_KEY is not configured in Vercel' })
   }
 
   const productNames = products.map((p) => p.name).filter(Boolean)
 
   const tool = {
-    name: 'reportar_conteo',
-    description: 'Reporta cuántas unidades de cada producto esperado son visibles en la foto.',
+    name: 'report_count',
+    description: 'Reports how many units of each expected product are visible in the photo.',
     input_schema: {
       type: 'object',
       properties: {
-        conteos: {
+        counts: {
           type: 'array',
           items: {
             type: 'object',
             properties: {
-              nombre: {
+              name: {
                 type: 'string',
-                description: 'Nombre exacto del producto, tal como aparece en la lista dada',
+                description: 'Exact product name, as it appears in the given list',
               },
-              cantidad: {
+              quantity: {
                 type: 'integer',
                 minimum: 0,
-                description: 'Unidades de ese producto visibles en la foto',
+                description: 'Units of that product visible in the photo',
               },
             },
-            required: ['nombre', 'cantidad'],
+            required: ['name', 'quantity'],
           },
         },
       },
-      required: ['conteos'],
+      required: ['counts'],
     },
   }
 
-  const prompt = `Esta es una foto de la zona "${zoneName}" de un bar.
+  const prompt = `This is a photo of the "${zoneName}" zone in a bar.
 
-Lista de productos esperados en esta zona (usá EXACTAMENTE estos nombres, no inventes otros ni los traduzcas):
+List of products expected in this zone (use EXACTLY these names, don't invent others or translate them):
 ${productNames.map((n) => `- ${n}`).join('\n')}
 
-Contá cuántas botellas/latas/unidades de cada producto de la lista son visibles en la imagen. Si un producto de la lista no aparece en la foto, reportalo con cantidad 0. Ignorá productos que no estén en la lista. Si hay dudas por oclusión, ángulo o etiquetas parcialmente tapadas, dá tu mejor estimación de lo visible — no la cantidad ideal ni la que "debería" haber.`
+Count how many bottles/cans/units of each product on the list are visible in the image. If a product from the list doesn't appear in the photo, report it with quantity 0. Ignore products that aren't on the list. If there's doubt due to occlusion, angle, or partially covered labels, give your best estimate of what's visible, not the ideal quantity or what "should" be there.`
 
   try {
     const response = await fetch('https://api.anthropic.com/v1/messages', {
@@ -80,7 +80,7 @@ Contá cuántas botellas/latas/unidades de cada producto de la lista son visible
         model: process.env.ANTHROPIC_MODEL || DEFAULT_MODEL,
         max_tokens: 1024,
         tools: [tool],
-        tool_choice: { type: 'tool', name: 'reportar_conteo' },
+        tool_choice: { type: 'tool', name: 'report_count' },
         messages: [
           {
             role: 'user',
@@ -98,19 +98,19 @@ Contá cuántas botellas/latas/unidades de cada producto de la lista son visible
 
     if (!response.ok) {
       const detail = await response.text()
-      return res.status(502).json({ error: 'El modelo de visión devolvió un error', detail })
+      return res.status(502).json({ error: 'The vision model returned an error', detail })
     }
 
     const data = await response.json()
     const toolUse = data.content?.find((block) => block.type === 'tool_use')
-    const conteos = toolUse?.input?.conteos
+    const counts = toolUse?.input?.counts
 
-    if (!Array.isArray(conteos)) {
-      return res.status(502).json({ error: 'La respuesta del modelo no tenía el formato esperado' })
+    if (!Array.isArray(counts)) {
+      return res.status(502).json({ error: "The model's response wasn't in the expected format" })
     }
 
-    return res.status(200).json({ conteos })
+    return res.status(200).json({ counts })
   } catch (err) {
-    return res.status(500).json({ error: 'No se pudo contactar al modelo de visión', detail: String(err) })
+    return res.status(500).json({ error: 'Could not reach the vision model', detail: String(err) })
   }
 }

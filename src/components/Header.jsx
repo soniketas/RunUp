@@ -28,15 +28,15 @@ export default function Header({ title, subtitle, pendingCount, summary, tone = 
             {summary.missing > 0 ? (
               <p className={`font-display text-[28px] font-extrabold leading-none tracking-tight ${textClass}`}>
                 {summary.missing}
-                <span className={`ml-1.5 font-sans text-[15px] font-bold ${mutedTextClass}`}>por reponer</span>
+                <span className={`ml-1.5 font-sans text-[15px] font-bold ${mutedTextClass}`}>to restock</span>
               </p>
             ) : (
               <p className={`font-display text-[28px] font-extrabold leading-none tracking-tight ${isGreen ? 'text-white' : 'text-emerald-700'}`}>
-                Todo listo
+                All set
               </p>
             )}
             <p className={`pb-1 font-mono text-xs font-semibold ${mutedTextClass}`}>
-              {summary.complete}/{summary.total} completos
+              {summary.complete}/{summary.total} complete
             </p>
           </div>
 
