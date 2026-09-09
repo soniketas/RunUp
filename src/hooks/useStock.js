@@ -205,6 +205,24 @@ export function useStock() {
     setShortages((prev) => prev.filter((s) => s.id !== shortageId))
   }, [])
 
+  // Aplica los conteos confirmados de un escaneo por IA (foto de la zona) al
+  // stock real. `counts` es { [itemId]: cantidadConfirmada } — ya pasó por la
+  // revisión manual del runner en ScanReview, así que se aplica directo,
+  // igual que setFull/setEmpty.
+  const applyScanCounts = useCallback(
+    (zoneId, counts) => {
+      setItems((prev) =>
+        prev.map((item) => {
+          if (item.zoneId !== zoneId || !(item.id in counts)) return item
+          const next = Math.min(item.max, Math.max(0, Math.round(counts[item.id])))
+          return { ...item, current: next }
+        }),
+      )
+      touchUpdated(runnerName || null)
+    },
+    [touchUpdated, runnerName],
+  )
+
   // --- Configuración: zonas y catálogo de productos ---
 
   const addZone = useCallback(
@@ -338,6 +356,7 @@ export function useStock() {
     lastUpdated,
     shortages,
     dismissShortage,
+    applyScanCounts,
     addZone,
     updateZone,
     removeZone,

@@ -37,3 +37,16 @@ Key data flow through `useStock`:
 `SettingsView` is where zones/products (catalog) are added/edited/removed — this mutates the `zones`/`items` arrays directly rather than going through the stock-count flow above.
 
 `src/lib/zoneColors.js` and `src/lib/time.js` hold small shared display helpers (per-zone color coding shared between Home's donut chart and the picking list; relative-time formatting and freshness bucketing for "last updated").
+
+`api/count-stock.js` is the only server-side code in this repo (a Vercel Serverless Function). It exists solely to hide `ANTHROPIC_API_KEY` from the client — everything else is a static SPA.
+
+## AI zone scan ("Escanear")
+
+From `ZoneView`, a runner can tap "📷 Escanear" (`ScanCapture`) to photograph a zone instead of counting by hand. Flow:
+
+1. `ScanCapture` opens the phone's native camera (`<input type="file" capture="environment">`).
+2. `src/lib/scan.js` resizes the photo client-side (max 1280px, JPEG q0.75) before sending it anywhere, since bar wifi is unreliable.
+3. It POSTs the resized image + the zone's expected product names to `/api/count-stock`, which calls a vision-capable Claude model (via `ANTHROPIC_API_KEY`, server-side only) and gets back a count per product name.
+4. Results are matched back to real item ids by exact name match (`scanZone`'s `byName` map) and handed to `ScanReview`.
+5. `ScanReview` is a mandatory manual-confirmation step — the AI's counts are never applied directly. The runner adjusts each count with +/- (occlusion, miscounts, etc.) and taps "Confirmar" to actually update stock.
+6. Only on confirm does `applyScanCounts(zoneId, counts)` (in `useStock`) write the adjusted counts into `items`, the same way `setFull`/`setEmpty` do.
