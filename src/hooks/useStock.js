@@ -1,170 +1,160 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
-  INITIAL_ITEMS,
-  STORAGE_KEY_CHECKED,
-  STORAGE_KEY_ITEMS,
-  STORAGE_KEY_LAST_UPDATED,
-  STORAGE_KEY_RUNNER,
-  STORAGE_KEY_SHORTAGES,
-  STORAGE_KEY_ZONES,
-  ZONES,
-  makeId,
-} from '../data/initialData'
+  deleteField,
+  doc,
+  getDoc,
+  increment as fbIncrement,
+  onSnapshot,
+  setDoc,
+  updateDoc,
+} from 'firebase/firestore'
+import { INITIAL_ITEMS, ZONES, makeId } from '../data/initialData'
+import { BAR_ID, db } from '../lib/firebase'
 
-function loadItems() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY_ITEMS)
-    if (!raw) return INITIAL_ITEMS
-    const parsed = JSON.parse(raw)
-    if (!Array.isArray(parsed) || parsed.length === 0) return INITIAL_ITEMS
-    return parsed
-  } catch {
-    return INITIAL_ITEMS
-  }
+const barRef = doc(db, 'bars', BAR_ID)
+
+// Firestore guarda `items` como mapa ({ [itemId]: {...} }), no array, para
+// poder hacer increments atómicos sobre el `current` de un item puntual
+// (updateDoc(ref, { [`items.${id}.current`]: increment(1) })) sin tocar el
+// resto del documento ni usar una transacción. Se convierte a array acá, en
+// el borde del hook, así el resto de la app sigue viendo lo mismo que antes.
+function itemsMapFromArray(items) {
+  return Object.fromEntries(
+    items.map(({ id, ...rest }) => [id, rest]),
+  )
 }
 
-function loadZones() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY_ZONES)
-    if (!raw) return ZONES
-    const parsed = JSON.parse(raw)
-    if (!Array.isArray(parsed) || parsed.length === 0) return ZONES
-    return parsed
-  } catch {
-    return ZONES
-  }
+function itemsArrayFromMap(map) {
+  return Object.entries(map || {}).map(([id, item]) => ({ id, ...item }))
 }
 
-// Cuánto de cada producto se confirmó juntar en el depósito para esta carga.
-// Objeto { [itemId]: cantidad }. Puede ser menor a lo que falta si el
-// depósito no tiene stock suficiente (reposición parcial).
-function loadPickQty() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY_CHECKED)
-    if (!raw) return {}
-    const parsed = JSON.parse(raw)
-    if (Array.isArray(parsed)) {
-      // formato viejo: array de ids marcados como "traído completo"
-      return Object.fromEntries(parsed.map((id) => [id, Infinity]))
-    }
-    return parsed && typeof parsed === 'object' ? parsed : {}
-  } catch {
-    return {}
-  }
-}
-
-function loadLastUpdated() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY_LAST_UPDATED)
-    if (!raw) return null
-    return JSON.parse(raw)
-  } catch {
-    return null
-  }
-}
-
-function loadShortages() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY_SHORTAGES)
-    if (!raw) return []
-    const parsed = JSON.parse(raw)
-    return Array.isArray(parsed) ? parsed : []
-  } catch {
-    return []
-  }
+function stamp(by) {
+  return { at: Date.now(), by: by ?? null }
 }
 
 export function useStock() {
-  const [zones, setZones] = useState(loadZones)
-  const [items, setItems] = useState(loadItems)
-  const [pickQty, setPickQty] = useState(loadPickQty)
-  const [runnerName, setRunnerNameState] = useState(
-    () => localStorage.getItem(STORAGE_KEY_RUNNER) || '',
-  )
-  const [lastUpdated, setLastUpdated] = useState(loadLastUpdated)
-  const [shortages, setShortages] = useState(loadShortages)
+  const [zones, setZones] = useState(ZONES)
+  const [items, setItems] = useState(INITIAL_ITEMS)
+  const [pickQty, setPickQty] = useState({})
+  const [runnerName, setRunnerNameState] = useState('')
+  const [lastUpdated, setLastUpdated] = useState(null)
+  const [shortages, setShortages] = useState([])
 
+  // Firestore es la única fuente de verdad, en tiempo real (onSnapshot), no
+  // localStorage. Cada mutación de más abajo escribe al documento y deja que
+  // este mismo listener actualice el estado local — tanto para los cambios
+  // propios como los que llegan de otro dispositivo — para no tener dos
+  // fuentes de verdad compitiendo.
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY_ZONES, JSON.stringify(zones))
-  }, [zones])
+    let cancelled = false
+    let unsubscribe = () => {}
 
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEY_ITEMS, JSON.stringify(items))
-  }, [items])
+    ;(async () => {
+      const snap = await getDoc(barRef)
+      if (!snap.exists()) {
+        await setDoc(barRef, {
+          zones: ZONES,
+          items: itemsMapFromArray(INITIAL_ITEMS),
+          pickQty: {},
+          runnerName: '',
+          lastUpdated: null,
+          shortages: [],
+        })
+      }
+      if (cancelled) return
 
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEY_CHECKED, JSON.stringify(pickQty))
-  }, [pickQty])
+      unsubscribe = onSnapshot(barRef, (docSnap) => {
+        const data = docSnap.data()
+        if (!data) return
+        setZones(Array.isArray(data.zones) ? data.zones : ZONES)
+        setItems(itemsArrayFromMap(data.items))
+        setPickQty(data.pickQty || {})
+        setRunnerNameState(data.runnerName || '')
+        setLastUpdated(data.lastUpdated || null)
+        setShortages(Array.isArray(data.shortages) ? data.shortages : [])
+      })
+    })()
 
-  useEffect(() => {
-    if (lastUpdated) localStorage.setItem(STORAGE_KEY_LAST_UPDATED, JSON.stringify(lastUpdated))
-  }, [lastUpdated])
-
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEY_SHORTAGES, JSON.stringify(shortages))
-  }, [shortages])
+    return () => {
+      cancelled = true
+      unsubscribe()
+    }
+  }, [])
 
   const setRunnerName = useCallback((name) => {
     const trimmed = name.trim()
-    setRunnerNameState(trimmed)
-    localStorage.setItem(STORAGE_KEY_RUNNER, trimmed)
+    updateDoc(barRef, { runnerName: trimmed })
   }, [])
 
-  const touchUpdated = useCallback((by) => {
-    setLastUpdated({ at: Date.now(), by: by ?? null })
-  }, [])
-
-  const updateItem = useCallback(
-    (id, updater) => {
-      setItems((prev) =>
-        prev.map((item) => {
-          if (item.id !== id) return item
-          const nextCurrent = updater(item)
-          return { ...item, current: Math.min(item.max, Math.max(0, nextCurrent)) }
-        }),
-      )
-      touchUpdated(runnerName || null)
+  // Operaciones frecuentes sobre `current`: increment atómico de Firestore,
+  // calculado a partir del delta deseado. `setFull`/`setEmpty` no son un
+  // incremento fijo, así que el delta se calcula contra el `current` que ya
+  // tenemos en el estado local (llega del propio onSnapshot).
+  const applyDelta = useCallback(
+    (id, delta) => {
+      updateDoc(barRef, {
+        [`items.${id}.current`]: fbIncrement(delta),
+        lastUpdated: stamp(runnerName),
+      })
     },
-    [touchUpdated, runnerName],
+    [runnerName],
   )
 
-  const increment = useCallback((id) => updateItem(id, (item) => item.current + 1), [updateItem])
-  const decrement = useCallback((id) => updateItem(id, (item) => item.current - 1), [updateItem])
-  const setFull = useCallback((id) => updateItem(id, (item) => item.max), [updateItem])
-  const setEmptyItem = useCallback((id) => updateItem(id, () => 0), [updateItem])
+  const increment = useCallback((id) => applyDelta(id, 1), [applyDelta])
+  const decrement = useCallback((id) => applyDelta(id, -1), [applyDelta])
+
+  const setFull = useCallback(
+    (id) => {
+      const item = items.find((i) => i.id === id)
+      if (!item) return
+      applyDelta(id, item.max - item.current)
+    },
+    [items, applyDelta],
+  )
+
+  const setEmptyItem = useCallback(
+    (id) => {
+      const item = items.find((i) => i.id === id)
+      if (!item) return
+      applyDelta(id, -item.current)
+    },
+    [items, applyDelta],
+  )
 
   // Tocar el check = "voy a traer todo lo que falta". Vuelve a tocar para desmarcar.
-  const toggleChecked = useCallback((itemId, missingAmount) => {
-    setPickQty((prev) => {
-      if (prev[itemId] > 0) {
-        const { [itemId]: _drop, ...rest } = prev
-        return rest
-      }
-      return { ...prev, [itemId]: missingAmount }
-    })
-  }, [])
+  const toggleChecked = useCallback(
+    (itemId, missingAmount) => {
+      const current = pickQty[itemId]
+      updateDoc(barRef, {
+        [`pickQty.${itemId}`]: current > 0 ? deleteField() : missingAmount,
+      })
+    },
+    [pickQty],
+  )
 
   // Ajustar manualmente cuánto se pudo conseguir (menos que lo que falta = quiebre de depósito).
   const setPickQuantity = useCallback((itemId, qty, missingAmount) => {
     const clamped = Math.max(0, Math.min(qty, missingAmount))
-    setPickQty((prev) => {
-      if (clamped <= 0) {
-        const { [itemId]: _drop, ...rest } = prev
-        return rest
-      }
-      return { ...prev, [itemId]: clamped }
+    updateDoc(barRef, {
+      [`pickQty.${itemId}`]: clamped <= 0 ? deleteField() : clamped,
     })
   }, [])
 
   const finalizeChecked = useCallback(() => {
-    // Nota: se calcula todo de forma síncrona a partir de `items` (closure),
-    // en vez de usar la forma funcional de setItems — el updater de setState
-    // se invoca en el re-render, no en el momento de la llamada, así que un
-    // side-effect (armar newShortages) adentro de ese updater se pierde.
+    // Nota: se calcula todo de forma síncrona a partir de `items`/`pickQty`
+    // (closure, alimentados por el último snapshot). El resultado se escribe
+    // en un solo updateDoc con overwrite de los campos afectados —
+    // `items.<id>.current` puntuales, `pickQty` entero y `shortages`
+    // entero — sin transacción. Con un solo runner por turno (caso normal
+    // hoy) esto no genera problemas reales; si en el futuro hay varios
+    // runners tocando la app al mismo tiempo, esto debería reforzarse con
+    // una transacción real.
     const newShortages = []
-    const nextItems = items.map((item) => {
+    const updates = {}
+
+    for (const item of items) {
       const qty = pickQty[item.id]
-      if (!(qty > 0)) return item
+      if (!(qty > 0)) continue
       const missingAtPick = item.max - item.current
       const applied = Math.min(qty, missingAtPick)
       if (applied < missingAtPick) {
@@ -179,17 +169,17 @@ export function useStock() {
           by: runnerName || null,
         })
       }
-      return { ...item, current: item.current + applied }
-    })
-
-    setItems(nextItems)
-    if (newShortages.length > 0) {
-      setShortages((prev) => [...newShortages, ...prev].slice(0, 30))
+      updates[`items.${item.id}.current`] = item.current + applied
     }
 
-    setPickQty({})
-    touchUpdated(runnerName || null)
-  }, [items, pickQty, runnerName, touchUpdated])
+    updates.pickQty = {}
+    if (newShortages.length > 0) {
+      updates.shortages = [...newShortages, ...shortages].slice(0, 30)
+    }
+    updates.lastUpdated = stamp(runnerName)
+
+    updateDoc(barRef, updates)
+  }, [items, pickQty, shortages, runnerName])
 
   // "Iniciar nueva reposición" no debe descartar lo que ya se marcó en la
   // carga en curso: aplica esos pickQty igual que "Finalizar carga" (sube el
@@ -201,74 +191,95 @@ export function useStock() {
     finalizeChecked()
   }, [finalizeChecked])
 
-  const dismissShortage = useCallback((shortageId) => {
-    setShortages((prev) => prev.filter((s) => s.id !== shortageId))
-  }, [])
+  const dismissShortage = useCallback(
+    (shortageId) => {
+      updateDoc(barRef, { shortages: shortages.filter((s) => s.id !== shortageId) })
+    },
+    [shortages],
+  )
 
   // Aplica los conteos confirmados de un escaneo por IA (foto de la zona) al
   // stock real. `counts` es { [itemId]: cantidadConfirmada } — ya pasó por la
   // revisión manual del runner en ScanReview, así que se aplica directo,
-  // igual que setFull/setEmpty.
+  // igual que setFull/setEmpty (overwrite de los `current` afectados, sin
+  // transacción — misma nota que en finalizeChecked).
   const applyScanCounts = useCallback(
     (zoneId, counts) => {
-      setItems((prev) =>
-        prev.map((item) => {
-          if (item.zoneId !== zoneId || !(item.id in counts)) return item
-          const next = Math.min(item.max, Math.max(0, Math.round(counts[item.id])))
-          return { ...item, current: next }
-        }),
-      )
-      touchUpdated(runnerName || null)
+      const updates = {}
+      for (const item of items) {
+        if (item.zoneId !== zoneId || !(item.id in counts)) continue
+        updates[`items.${item.id}.current`] = Math.min(
+          item.max,
+          Math.max(0, Math.round(counts[item.id])),
+        )
+      }
+      updates.lastUpdated = stamp(runnerName)
+      updateDoc(barRef, updates)
     },
-    [touchUpdated, runnerName],
+    [items, runnerName],
   )
 
   // --- Configuración: zonas y catálogo de productos ---
+  // `zones` cambia con tan poca frecuencia que se sobrescribe entero.
 
   const addZone = useCallback(
     ({ name, subtitle, icon }) => {
       const id = makeId('zone')
-      setZones((prev) => [
-        ...prev,
+      const nextZones = [
+        ...zones,
         { id, name: name.trim(), subtitle: (subtitle || '').trim(), icon: (icon || '📦').trim() },
-      ])
-      touchUpdated(runnerName || null)
+      ]
+      updateDoc(barRef, { zones: nextZones, lastUpdated: stamp(runnerName) })
     },
-    [touchUpdated, runnerName],
+    [zones, runnerName],
   )
 
-  const updateZone = useCallback((zoneId, patch) => {
-    setZones((prev) => prev.map((zone) => (zone.id === zoneId ? { ...zone, ...patch } : zone)))
-  }, [])
+  const updateZone = useCallback(
+    (zoneId, patch) => {
+      const nextZones = zones.map((zone) => (zone.id === zoneId ? { ...zone, ...patch } : zone))
+      updateDoc(barRef, { zones: nextZones })
+    },
+    [zones],
+  )
 
-  const removeZone = useCallback((zoneId) => {
-    setZones((prev) => prev.filter((zone) => zone.id !== zoneId))
-    setItems((prev) => prev.filter((item) => item.zoneId !== zoneId))
-  }, [])
+  const removeZone = useCallback(
+    (zoneId) => {
+      const nextZones = zones.filter((zone) => zone.id !== zoneId)
+      const updates = { zones: nextZones }
+      for (const item of items) {
+        if (item.zoneId === zoneId) updates[`items.${item.id}`] = deleteField()
+      }
+      updateDoc(barRef, updates)
+    },
+    [zones, items],
+  )
 
   const addProduct = useCallback(
     (zoneId, { name, max }) => {
       const id = makeId('item')
       const maxNum = Math.max(1, Math.round(Number(max)) || 1)
-      setItems((prev) => [...prev, { id, zoneId, name: name.trim(), max: maxNum, current: maxNum }])
-      touchUpdated(runnerName || null)
+      updateDoc(barRef, {
+        [`items.${id}`]: { zoneId, name: name.trim(), max: maxNum, current: maxNum },
+        lastUpdated: stamp(runnerName),
+      })
     },
-    [touchUpdated, runnerName],
+    [runnerName],
   )
 
-  const updateProduct = useCallback((itemId, patch) => {
-    setItems((prev) =>
-      prev.map((item) => {
-        if (item.id !== itemId) return item
-        const next = { ...item, ...patch }
-        if (patch.max != null) next.current = Math.min(next.current, next.max)
-        return next
-      }),
-    )
-  }, [])
+  const updateProduct = useCallback(
+    (itemId, patch) => {
+      const item = items.find((i) => i.id === itemId)
+      if (!item) return
+      const next = { ...item, ...patch }
+      if (patch.max != null) next.current = Math.min(next.current, next.max)
+      const { id: _id, ...rest } = next
+      updateDoc(barRef, { [`items.${itemId}`]: rest })
+    },
+    [items],
+  )
 
   const removeProduct = useCallback((itemId) => {
-    setItems((prev) => prev.filter((item) => item.id !== itemId))
+    updateDoc(barRef, { [`items.${itemId}`]: deleteField() })
   }, [])
 
   const itemsByZone = useMemo(() => {
