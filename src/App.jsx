@@ -30,6 +30,7 @@ function App() {
     lastUpdated,
     shortages,
     dismissShortage,
+    applyScanCounts,
     addZone,
     updateZone,
     removeZone,
@@ -73,6 +74,7 @@ function App() {
           decrement={decrement}
           setFull={setFull}
           setEmpty={setEmpty}
+          applyScanCounts={applyScanCounts}
         />
       )}
 
