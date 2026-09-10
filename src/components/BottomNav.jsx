@@ -3,7 +3,7 @@ import { IconClipboard, IconHome, IconReset, IconSettings, IconZones } from './i
 export default function BottomNav({ view, onChange, pendingCount, onReset }) {
   const handleReset = () => {
     const confirmed = window.confirm(
-      '¿Iniciar nueva reposición? Esto aplica lo que ya marcaste en la carga actual (sube el stock repuesto y registra quiebre en lo que haya quedado corto) y arranca una lista nueva y vacía. Lo que no se haya marcado sigue quedando como faltante.',
+      "Start a new restock run? This applies what you already checked off in the current run (raises restocked stock and logs a shortage for anything that came up short) and starts a fresh, empty list. Anything you never checked stays as missing.",
     )
     if (confirmed) onReset()
   }
@@ -36,7 +36,7 @@ export default function BottomNav({ view, onChange, pendingCount, onReset }) {
 
       <button
         onClick={handleReset}
-        aria-label="Nueva reposición"
+        aria-label="New restock run"
         className="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-full bg-accent text-white shadow-lg shadow-accent/30 active:bg-accent/90"
       >
         <IconReset className="h-6 w-6" />

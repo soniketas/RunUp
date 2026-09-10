@@ -3,15 +3,15 @@ export function formatRelativeTime(timestamp) {
   const diffMs = Date.now() - timestamp
   const diffMin = Math.floor(diffMs / 60000)
 
-  if (diffMin < 1) return 'Justo ahora'
-  if (diffMin < 60) return `Hace ${diffMin} min`
+  if (diffMin < 1) return 'Just now'
+  if (diffMin < 60) return `${diffMin} min ago`
 
   const diffH = Math.floor(diffMin / 60)
-  if (diffH < 24) return `Hace ${diffH} h`
+  if (diffH < 24) return `${diffH}h ago`
 
   const diffDays = Math.floor(diffH / 24)
-  if (diffDays === 1) return 'Ayer'
-  return `Hace ${diffDays} días`
+  if (diffDays === 1) return 'Yesterday'
+  return `${diffDays} days ago`
 }
 
 // 'fresh' <30min, 'stale' <4h, 'old' beyond, 'none' never updated

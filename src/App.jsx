@@ -43,8 +43,8 @@ function App() {
     <div className="flex h-dvh flex-col bg-page text-ink">
       {(view === 'zones' || view === 'picking') && (
         <Header
-          title={view === 'zones' ? 'Bar Stock' : 'Lista de Carga'}
-          subtitle={view === 'zones' ? `${zones.length} zonas · Turno de hoy` : 'Depósito'}
+          title={view === 'zones' ? 'Bar Stock' : 'Picking List'}
+          subtitle={view === 'zones' ? `${zones.length} zones · Today's shift` : 'Deposit'}
           pendingCount={pendingCount}
           summary={summary}
           tone={view === 'zones' ? 'yellow' : 'green'}

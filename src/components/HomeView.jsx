@@ -15,7 +15,7 @@ export default function HomeView({
   onNavigate,
 }) {
   const handleEditRunner = () => {
-    const next = window.prompt('¿Quién está de turno?', runnerName || '')
+    const next = window.prompt("Who's on shift?", runnerName || '')
     if (next !== null) setRunnerName(next)
   }
 
@@ -35,25 +35,25 @@ export default function HomeView({
           onClick={handleEditRunner}
           className="flex items-center gap-1.5 rounded-full bg-surface px-3 py-1.5 text-xs font-bold text-ink shadow-sm ring-1 ring-black/5"
         >
-          {runnerName || 'Asignar responsable'}
+          {runnerName || 'Assign runner'}
           <IconPencil className="h-3 w-3 text-muted" />
         </button>
       </div>
 
       <h1 className="mt-4 font-display text-[32px] font-extrabold leading-none tracking-tight text-ink" style={{ textWrap: 'balance' }}>
-        Turno de hoy
+        Today's shift
       </h1>
 
       <div className="mt-4">
         <p className="flex items-center gap-1.5 font-mono text-[11px] font-bold uppercase tracking-wide text-muted">
-          Última actualización
+          Last updated
           <FreshnessDots level={freshness} />
         </p>
         <p className="mt-1 font-display text-xl font-bold text-ink">
-          {lastUpdated ? relative : 'Sin registros aún'}
+          {lastUpdated ? relative : 'No updates yet'}
           {lastUpdated?.by && (
             <span className="ml-1.5 font-sans text-sm font-semibold text-muted">
-              · por {lastUpdated.by}
+              · by {lastUpdated.by}
             </span>
           )}
         </p>
@@ -70,14 +70,14 @@ export default function HomeView({
           onClick={() => onNavigate('zones')}
           className="flex items-center justify-between rounded-2xl bg-ink px-4 py-3.5 active:bg-ink/90"
         >
-          <span className="font-display text-sm font-bold text-white">Ver zonas</span>
+          <span className="font-display text-sm font-bold text-white">View zones</span>
           <IconZones className="h-4 w-4 text-white/70" />
         </button>
         <button
           onClick={() => onNavigate('picking')}
           className="flex items-center justify-between rounded-2xl bg-surface px-4 py-3.5 shadow-sm ring-1 ring-black/5 active:bg-page"
         >
-          <span className="font-display text-sm font-bold text-ink">Lista de carga</span>
+          <span className="font-display text-sm font-bold text-ink">Picking list</span>
           {pendingCount > 0 ? (
             <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-accent px-1 text-[11px] font-bold text-white">
               {pendingCount}
@@ -89,7 +89,7 @@ export default function HomeView({
       </div>
 
       <p className="mt-4 text-center text-xs text-muted">
-        {summary.complete}/{summary.total} productos completos en todas las zonas
+        {summary.complete}/{summary.total} products complete across all zones
       </p>
     </div>
   )
@@ -116,9 +116,9 @@ function FreshnessDots({ level }) {
 
 function StockCard({ stockBreakdown }) {
   const categories = [
-    { key: 'empty', label: 'Vacío', count: stockBreakdown.empty, style: patternDots },
-    { key: 'low', label: 'Bajo', count: stockBreakdown.low, style: patternStripes },
-    { key: 'complete', label: 'Completo', count: stockBreakdown.complete, style: patternSolid },
+    { key: 'empty', label: 'Empty', count: stockBreakdown.empty, style: patternDots },
+    { key: 'low', label: 'Low', count: stockBreakdown.low, style: patternStripes },
+    { key: 'complete', label: 'Complete', count: stockBreakdown.complete, style: patternSolid },
   ]
   const maxCount = Math.max(stockBreakdown.complete, stockBreakdown.low, stockBreakdown.empty, 1)
   const rowHeight = 120
@@ -127,7 +127,7 @@ function StockCard({ stockBreakdown }) {
   return (
     <div className="mt-4 rounded-3xl bg-block-yellow p-4">
       <p className="font-mono text-[11px] font-bold uppercase tracking-wide text-ink/60">
-        Estado del stock
+        Stock status
       </p>
 
       <div className="mt-3 flex items-end gap-3" style={{ height: rowHeight }}>
@@ -166,7 +166,7 @@ function ZoneDonutCard({ missingByZone, totalMissingUnits }) {
       <div className="mt-4 flex items-center gap-3 rounded-3xl bg-block-orange p-4">
         <span className="font-display text-2xl font-extrabold text-ink">0</span>
         <span className="font-mono text-[11px] font-bold uppercase tracking-wide text-ink/70">
-          Nada por reponer — todas las zonas al máximo
+          Nothing to restock, every zone is full
         </span>
       </div>
     )
@@ -184,7 +184,7 @@ function ZoneDonutCard({ missingByZone, totalMissingUnits }) {
   return (
     <div className="mt-4 rounded-3xl bg-block-orange p-4">
       <p className="font-mono text-[11px] font-bold uppercase tracking-wide text-ink/70">
-        Por reponer, por zona
+        To restock, by zone
       </p>
 
       <div className="mt-3 flex items-center gap-4">
@@ -225,9 +225,9 @@ function ShortagesCard({ shortages, onDismiss }) {
   return (
     <div className="mt-4 rounded-3xl bg-surface p-4 shadow-sm ring-1 ring-black/5">
       <p className="font-mono text-[11px] font-bold uppercase tracking-wide text-accent">
-        Quiebres de depósito · {shortages.length}
+        Deposit shortages · {shortages.length}
       </p>
-      <p className="mt-0.5 text-xs text-muted">No se pudo reponer todo lo que faltaba en estas cargas.</p>
+      <p className="mt-0.5 text-xs text-muted">Not everything that was missing could be restocked in these runs.</p>
 
       <div className="mt-3 space-y-2">
         {shortages.map((s) => (
@@ -235,13 +235,13 @@ function ShortagesCard({ shortages, onDismiss }) {
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-bold text-ink">{s.name}</p>
               <p className="mt-0.5 font-mono text-[11px] font-semibold text-accent">
-                Llegaron {s.brought} de {s.requested} · {formatRelativeTime(s.at)}
+                Got {s.brought} of {s.requested} · {formatRelativeTime(s.at)}
                 {s.by && ` · ${s.by}`}
               </p>
             </div>
             <button
               onClick={() => onDismiss(s.id)}
-              aria-label={`Descartar aviso de ${s.name}`}
+              aria-label={`Dismiss alert for ${s.name}`}
               className="flex-shrink-0 rounded-full px-2 py-1 text-xs font-bold text-accent active:bg-white/40"
             >
               OK

@@ -1,7 +1,7 @@
-// Cliente del feature de "escanear zona": redimensiona la foto en el propio
-// dispositivo (para no mandar 4000x3000 por la red del bar), la manda a
-// /api/count-stock, y devuelve los conteos ya emparejados con los items
-// reales de la zona (por nombre exacto).
+// Client side of the "scan zone" feature: resizes the photo on-device (so we
+// don't send a 4000x3000 image over the bar's wifi), sends it to
+// /api/count-stock, and returns the counts already matched to the zone's
+// real items (by exact name).
 
 async function resizeImage(file, maxDim = 1280, quality = 0.75) {
   const bitmap = await createImageBitmap(file)
@@ -16,7 +16,7 @@ async function resizeImage(file, maxDim = 1280, quality = 0.75) {
 
   return new Promise((resolve, reject) => {
     canvas.toBlob(
-      (blob) => (blob ? resolve(blob) : reject(new Error('No se pudo procesar la imagen'))),
+      (blob) => (blob ? resolve(blob) : reject(new Error('Could not process the image'))),
       'image/jpeg',
       quality,
     )
@@ -31,13 +31,13 @@ function blobToBase64(blob) {
       const mediaType = header.match(/data:(.*);base64/)?.[1] || blob.type || 'image/jpeg'
       resolve({ data, mediaType })
     }
-    reader.onerror = () => reject(new Error('No se pudo leer la imagen'))
+    reader.onerror = () => reject(new Error('Could not read the image'))
     reader.readAsDataURL(blob)
   })
 }
 
-// products: items de la zona activa ([{ id, name, ... }])
-// Devuelve: [{ itemId, name, detected }]
+// products: items in the active zone ([{ id, name, ... }])
+// Returns: [{ itemId, name, detected }]
 export async function scanZone({ file, zoneName, products }) {
   const resized = await resizeImage(file)
   const { data, mediaType } = await blobToBase64(resized)
@@ -55,15 +55,15 @@ export async function scanZone({ file, zoneName, products }) {
 
   const result = await response.json()
   if (!response.ok) {
-    throw new Error(result.error || 'No se pudo analizar la foto')
+    throw new Error(result.error || 'Could not analyze the photo')
   }
 
   const byName = new Map(products.map((p) => [p.name, p]))
-  return result.conteos
-    .map(({ nombre, cantidad }) => {
-      const product = byName.get(nombre)
+  return result.counts
+    .map(({ name, quantity }) => {
+      const product = byName.get(name)
       if (!product) return null
-      return { itemId: product.id, name: nombre, detected: Math.max(0, Math.round(cantidad)) }
+      return { itemId: product.id, name, detected: Math.max(0, Math.round(quantity)) }
     })
     .filter(Boolean)
 }

@@ -1,10 +1,10 @@
 import { useRef, useState } from 'react'
 import { scanZone } from '../lib/scan'
 
-// Botón que dispara la cámara nativa del teléfono (capture="environment"),
-// manda la foto a analizar, y entrega los resultados ya emparejados con los
-// productos de la zona vía onResults. No toca el estado real de stock —
-// eso lo decide quien confirma en ScanReview.
+// Button that triggers the phone's native camera (capture="environment"),
+// sends the photo off to be analyzed, and hands back results already matched
+// to the zone's real products via onResults. It never touches real stock
+// state itself, that's decided by whoever confirms in ScanReview.
 export default function ScanCapture({ zoneName, products, onResults }) {
   const inputRef = useRef(null)
   const [status, setStatus] = useState('idle') // idle | loading | error
@@ -23,7 +23,7 @@ export default function ScanCapture({ zoneName, products, onResults }) {
       onResults(results)
     } catch (err) {
       setStatus('error')
-      setError(err.message || 'No se pudo analizar la foto')
+      setError(err.message || 'Could not analyze the photo')
     }
   }
 
@@ -42,7 +42,7 @@ export default function ScanCapture({ zoneName, products, onResults }) {
         disabled={status === 'loading'}
         className="flex flex-shrink-0 items-center gap-1.5 rounded-xl bg-surface px-3 py-1.5 text-xs font-bold text-ink shadow-sm ring-1 ring-black/5 active:bg-track disabled:opacity-50"
       >
-        {status === 'loading' ? 'Analizando…' : '📷 Escanear'}
+        {status === 'loading' ? 'Analyzing…' : '📷 Scan'}
       </button>
       {error && <p className="max-w-40 text-right text-[11px] font-semibold text-[#f1413a]">{error}</p>}
     </div>

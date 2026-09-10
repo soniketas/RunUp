@@ -11,8 +11,8 @@ export default function PickingView({ pickingByZone, toggleChecked, setPickQuant
         <div className="flex h-16 w-16 items-center justify-center rounded-full bg-surface shadow-sm ring-1 ring-black/5">
           <IconCheck className="h-7 w-7 text-emerald-500" />
         </div>
-        <p className="mt-4 text-lg font-bold text-ink">Todo completo</p>
-        <p className="mt-1 text-sm text-muted">No falta nada por reponer en ninguna zona.</p>
+        <p className="mt-4 text-lg font-bold text-ink">All done</p>
+        <p className="mt-1 text-sm text-muted">Nothing left to restock in any zone.</p>
       </div>
     )
   }
@@ -29,8 +29,8 @@ export default function PickingView({ pickingByZone, toggleChecked, setPickQuant
   const handleFinalize = () => {
     const msg =
       shortfallCount > 0
-        ? `Vas a actualizar ${checkedCount} productos. ${shortfallCount} de ellos quedan incompletos porque el depósito no tenía todo — se van a registrar como quiebre. ¿Confirmás?`
-        : `¿Ya repusiste estos ${checkedCount} productos en sus neveras? Se van a marcar como completos.`
+        ? `You're about to update ${checkedCount} products. ${shortfallCount} of them will stay incomplete because the deposit didn't have enough, and will be logged as a shortage. Confirm?`
+        : `Did you already restock these ${checkedCount} products in their fridges? They'll be marked complete.`
     if (window.confirm(msg)) onFinalize()
   }
 
@@ -38,8 +38,8 @@ export default function PickingView({ pickingByZone, toggleChecked, setPickQuant
     <div className="relative flex flex-1 flex-col overflow-hidden">
       <div className={`flex-1 space-y-4 overflow-y-auto px-5 pt-3 ${checkedCount > 0 ? 'pb-40' : 'pb-32'}`}>
         <p className="text-xs text-muted">
-          Organizado por nevera. Marcá cada producto y, si el depósito no tiene todo, ajustá la cantidad que
-          conseguiste.
+          Organized by fridge. Check off each product, and if the deposit doesn't have everything, adjust the
+          quantity you actually got.
         </p>
 
         {pickingByZone.map((group, i) => {
@@ -57,7 +57,7 @@ export default function PickingView({ pickingByZone, toggleChecked, setPickQuant
                 </span>
                 {pendingInZone > 0 && (
                   <span className="font-mono text-[11px] font-semibold text-accent">
-                    · {pendingInZone} por llevar
+                    · {pendingInZone} left to bring
                   </span>
                 )}
               </div>
@@ -84,8 +84,8 @@ export default function PickingView({ pickingByZone, toggleChecked, setPickQuant
             className="flex w-full items-center justify-center gap-2 rounded-2xl bg-block-orange py-3.5 text-sm font-bold text-ink shadow-lg shadow-black/10 active:bg-block-orange/90"
           >
             <IconCheck className="h-4 w-4 text-ink" />
-            Finalizar carga · actualizar {checkedCount} {checkedCount === 1 ? 'producto' : 'productos'}
-            {shortfallCount > 0 && ` (${shortfallCount} incompletos)`}
+            Finish run · update {checkedCount} {checkedCount === 1 ? 'product' : 'products'}
+            {shortfallCount > 0 && ` (${shortfallCount} incomplete)`}
           </button>
         </div>
       )}
@@ -97,13 +97,13 @@ function PickingRow({ item, onToggle, onQtyChange }) {
   const isChecked = item.pickQty > 0
   const isShort = isChecked && item.pickQty < item.missing
 
-  // Estado local para el texto del input: al borrar el campo para reescribirlo
-  // pasa por "" — eso no se confirma como cantidad real (no queremos que
-  // desmarque el producto ni desaparezca el input a mitad de la edición),
-  // pero cada valor válido SÍ se confirma al instante (no solo al salir del
-  // campo): si el usuario escribe "10" y toca "Finalizar carga" sin que el
-  // input llegue a perder el foco primero (típico en mobile con teclado
-  // virtual), la carga tiene que reflejar igual el número ya tipeado.
+  // Local state for the input's text: clearing the field to retype it passes
+  // through "" — that's not confirmed as a real quantity (we don't want it to
+  // uncheck the product or make the input disappear mid-edit), but every
+  // valid value IS confirmed instantly (not only on blur): if the user types
+  // "10" and taps "Finish run" without the input losing focus first (typical
+  // on mobile with the virtual keyboard), the run still needs to reflect the
+  // number already typed.
   const [draft, setDraft] = useState(String(item.pickQty))
 
   useEffect(() => {
@@ -138,7 +138,7 @@ function PickingRow({ item, onToggle, onQtyChange }) {
     >
       <button
         onClick={onToggle}
-        aria-label={isChecked ? `Desmarcar ${item.name}` : `Marcar ${item.name}`}
+        aria-label={isChecked ? `Uncheck ${item.name}` : `Check ${item.name}`}
         className="flex flex-1 items-center gap-2.5 text-left"
       >
         <span
@@ -158,7 +158,7 @@ function PickingRow({ item, onToggle, onQtyChange }) {
           </span>
           {isShort && (
             <span className="mt-0.5 block font-mono text-[10px] font-bold uppercase tracking-wide text-accent">
-              Quiebre de depósito
+              Deposit shortage
             </span>
           )}
         </span>
@@ -181,7 +181,7 @@ function PickingRow({ item, onToggle, onQtyChange }) {
           <span className="font-mono text-xs font-semibold text-muted">/ {item.missing}</span>
         </div>
       ) : (
-        <span className="flex-shrink-0 font-mono text-xs font-semibold text-muted">Faltan {item.missing}</span>
+        <span className="flex-shrink-0 font-mono text-xs font-semibold text-muted">{item.missing} missing</span>
       )}
     </div>
   )

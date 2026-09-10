@@ -1,4 +1,4 @@
-// Color de identidad por zona (mismo orden que ZONES), reutilizado en el
-// donut de Home y en las secciones de la Lista de Carga para que ambas
-// pantallas "hablen el mismo idioma" visual.
+// Per-zone identity color (same order as ZONES), reused in Home's donut
+// chart and in the Picking List's sections so both screens "speak the same
+// visual language."
 export const ZONE_SEGMENT_COLORS = ['#181611', '#ffffff', '#e7f158']

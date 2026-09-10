@@ -5,8 +5,8 @@ import { VitePWA } from 'vite-plugin-pwa'
 
 export default defineConfig({
   server: {
-    // Expone el dev server en la red local (no solo localhost) para poder
-    // abrirlo desde el celular mientras se itera con hot-reload.
+    // Exposes the dev server on the local network (not just localhost) so
+    // it can be opened from a phone while iterating with hot-reload.
     host: true,
   },
   plugins: [
@@ -33,9 +33,9 @@ export default defineConfig({
         ],
       },
       manifest: {
-        name: 'Bar Stock — Reposición',
+        name: 'Bar Stock — Restock',
         short_name: 'BarStock',
-        description: 'App de reposición rápida de bebidas para bares',
+        description: 'Fast drink restocking app for bars',
         theme_color: '#f4efe4',
         background_color: '#f4efe4',
         display: 'standalone',

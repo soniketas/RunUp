@@ -13,13 +13,15 @@ There is no test suite configured in this repo.
 
 ## What this app is
 
-A single-page PWA (React 19 + Vite + Tailwind v4 + `vite-plugin-pwa`) for bars to track fridge/shelf stock levels and generate a "shopping list" (picking list) of what needs to be restocked from the deposit. UI copy and comments are in Spanish (Argentina); the domain vocabulary matters when reading/writing code:
+A single-page PWA (React 19 + Vite + Tailwind v4 + `vite-plugin-pwa`) for bars to track fridge/shelf stock levels and generate a "shopping list" (picking list) of what needs to be restocked from the deposit. UI copy and code comments are in English as of 2026-09-09 (translated from the original Spanish/Argentina build); the domain vocabulary still matters when reading/writing code:
 
-- **zona** (zone) — a physical location (fridge, shelf) holding products, each with an `icon`/`subtitle`.
-- **item** / **producto** — a stock line tied to one zone, with `current` and `max` (ideal full stock) counts.
-- **picking** / **carga** — the workflow of gathering missing stock from the deposit and bringing it to zones.
-- **quiebre (de depósito)** — a "shortage": the deposit didn't have enough of an item to fully restock a zone.
-- **responsable / runner** — the person currently on shift, attributed to updates.
+- **zone** — a physical location (fridge, shelf) holding products, each with an `icon`/`subtitle`.
+- **item** / **product** — a stock line tied to one zone, with `current` and `max` (ideal full stock) counts.
+- **picking** / **restock run** — the workflow of gathering missing stock from the deposit and bringing it to zones.
+- **(deposit) shortage** — the deposit didn't have enough of an item to fully restock a zone.
+- **runner** — the person currently on shift, attributed to updates.
+
+Note: the app's UI strings and `src/data/initialData.js` seed data were translated to English on 2026-09-09, but the *live* Firestore document (`bars/{BAR_ID}`) was seeded earlier and may still hold zone/product names in Spanish until that document itself is updated (a separate, one-off data change, not a code change) — don't assume the running production app's actual content is in English just because the source is.
 
 ## Architecture
 
@@ -44,13 +46,13 @@ Key data flow through `useStock`:
 
 `api/count-stock.js` is the only server-side code in this repo (a Vercel Serverless Function). It exists solely to hide `ANTHROPIC_API_KEY` from the client — everything else is a static SPA.
 
-## AI zone scan ("Escanear")
+## AI zone scan ("Scan")
 
-From `ZoneView`, a runner can tap "📷 Escanear" (`ScanCapture`) to photograph a zone instead of counting by hand. Flow:
+From `ZoneView`, a runner can tap "📷 Scan" (`ScanCapture`) to photograph a zone instead of counting by hand. Flow:
 
 1. `ScanCapture` opens the phone's native camera (`<input type="file" capture="environment">`).
 2. `src/lib/scan.js` resizes the photo client-side (max 1280px, JPEG q0.75) before sending it anywhere, since bar wifi is unreliable.
 3. It POSTs the resized image + the zone's expected product names to `/api/count-stock`, which calls a vision-capable Claude model (via `ANTHROPIC_API_KEY`, server-side only) and gets back a count per product name.
 4. Results are matched back to real item ids by exact name match (`scanZone`'s `byName` map) and handed to `ScanReview`.
-5. `ScanReview` is a mandatory manual-confirmation step — the AI's counts are never applied directly. The runner adjusts each count with +/- (occlusion, miscounts, etc.) and taps "Confirmar" to actually update stock.
+5. `ScanReview` is a mandatory manual-confirmation step — the AI's counts are never applied directly. The runner adjusts each count with +/- (occlusion, miscounts, etc.) and taps "Confirm" to actually update stock.
 6. Only on confirm does `applyScanCounts(zoneId, counts)` (in `useStock`) write the adjusted counts into `items`, the same way `setFull`/`setEmpty` do.
